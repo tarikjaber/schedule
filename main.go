@@ -148,8 +148,7 @@ func main() {
 	now := time.Now()
 
 	currWeekday := int(now.Weekday())
-	fmt.Println(currWeekday)
-	return
+	currWeekday = ((currWeekday + 6) % 7) + 1
 
 	currTime, err := strconv.Atoi(now.Format("1504"))
 
