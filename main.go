@@ -148,6 +148,9 @@ func main() {
 	now := time.Now()
 
 	currWeekday := int(now.Weekday())
+	fmt.Println(currWeekday)
+	return
+
 	currTime, err := strconv.Atoi(now.Format("1504"))
 
 	if err != nil {
