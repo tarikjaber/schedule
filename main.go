@@ -181,7 +181,7 @@ func main() {
 	currDayBlocks = append(currDayBlocks, dummyEnd)
 	currDayBlocks = append([]Block{dummyStart}, currDayBlocks...)
 
-	for i, currBlock := range currDayBlocks {
+	for i, currBlock := range currDayBlocks[1 : len(currDayBlocks)-1] {
 		itemTime, err := strconv.Atoi(currBlock.Time)
 
 		if err != nil {
