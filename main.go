@@ -182,6 +182,7 @@ func main() {
 	currDayBlocks = append([]Block{dummyStart}, currDayBlocks...)
 
 	for i, currBlock := range currDayBlocks[1 : len(currDayBlocks)-1] {
+		originalIndex := i + 1
 		itemTime, err := strconv.Atoi(currBlock.Time)
 
 		if err != nil {
@@ -200,7 +201,7 @@ func main() {
 		}
 
 		if currTime < itemTime && !notifyOnMobile {
-			prevEvent := currDayBlocks[i-1].Name
+			prevEvent := currDayBlocks[originalIndex-1].Name
 			currBlockText := currBlock.Time + " " + prevEvent
 			err := os.WriteFile("/home/tarik/.config/waybar/current_block", []byte(currBlockText), 644)
 
