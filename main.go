@@ -190,7 +190,7 @@ func main() {
 		}
 
 		if currTime == itemTime {
-			nextTime := currDayBlocks[i+1].Time
+			nextTime := currDayBlocks[originalIndex+1].Time
 			interval := fmt.Sprintf("%s-%s", currBlock.Time, nextTime)
 
 			if notifyOnMobile {
