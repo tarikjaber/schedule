@@ -16,7 +16,7 @@ import (
 )
 
 type Block struct {
-	Time string
+	Time int
 	Name string
 }
 
@@ -64,9 +64,14 @@ func getDayBlocks() []DayBlocks {
 
 		for _, line := range lines[1:] {
 			parts := strings.SplitN(line, " ", 2)
+			intTime, err := strconv.Atoi(parts[0])
+
+			if err != nil {
+				log.Fatalf("Could not convert time %s to int", parts[0])
+			}
 
 			block := Block{
-				Time: parts[0],
+				Time: intTime,
 				Name: parts[1],
 			}
 			blocks = append(blocks, block)
@@ -132,6 +137,22 @@ func mobileNotifs() (bool, error) {
 	}
 }
 
+func updateWaybarFile(currBlockName string, endTime string) error {
+	fileText := currBlockName + " " + endTime
+
+	err := os.WriteFile("/home/tarik/.config/waybar/current_block", []byte(fileText), 644)
+
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	err = sendSignalToWaybar()
+	if err != nil {
+		log.Fatalf("Error sending signal to waybar: %v", err.Error())
+	}
+	return nil
+}
+
 func sendSignalToWaybar() error {
 	cmd := exec.Command("pkill", "-RTMIN+9", "waybar")
 	err := cmd.Run()
@@ -139,8 +160,48 @@ func sendSignalToWaybar() error {
 	return err
 }
 
+func processBlockStart(currDayBlocks []Block, currTime int) (blockName string, interval string, taskStarting bool) {
+	for i, block := range currDayBlocks[1 : len(currDayBlocks)-1] {
+		originalIndex := i + 1
+
+		if currTime == block.Time {
+			nextTime := currDayBlocks[originalIndex+1].Time
+			interval := fmt.Sprintf("%04d-%04d", block.Time, nextTime)
+			return block.Name, interval, true
+		}
+	}
+	return "", "", false
+}
+
+func processBlockCurrent(currDayBlocks []Block, currTime int) (blockName string, endTime string, err error) {
+	dummyStart := Block{
+		Time: 0,
+		Name: "Free",
+	}
+	dummyEnd := Block{
+		Time: 2400,
+		Name: "Free",
+	}
+
+	currDayBlocks = append(currDayBlocks, dummyEnd)
+	currDayBlocks = append([]Block{dummyStart}, currDayBlocks...)
+
+	for i, block := range currDayBlocks[1 : len(currDayBlocks)-1] {
+		originalIndex := i + 1
+
+		if currTime < block.Time {
+			event := currDayBlocks[originalIndex-1].Name
+			paddedNextEventTime := fmt.Sprintf("%04d", block.Time)
+
+			return event, paddedNextEventTime, nil
+		}
+	}
+
+	return "", "", fmt.Errorf("No matching event found for current time: %d", currTime)
+}
+
 func main() {
-	notifyOnMobile, err := mobileNotifs()
+	mobile, err := mobileNotifs()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -169,52 +230,26 @@ func main() {
 		log.Fatalf("Current day %d not found in schedule.", currWeekday)
 	}
 
-	dummyStart := Block{
-		Time: "0000",
-		Name: "Free",
-	}
-	dummyEnd := Block{
-		Time: "2400",
-		Name: "Free",
-	}
+	startingBlockName, startingBlockInterval, taskStarting := processBlockStart(currDayBlocks, currTime)
 
-	currDayBlocks = append(currDayBlocks, dummyEnd)
-	currDayBlocks = append([]Block{dummyStart}, currDayBlocks...)
+	if mobile {
+		if taskStarting {
+			sendMobileNotification(startingBlockName, startingBlockInterval)
+		}
+	} else {
+		if taskStarting {
+			sendDesktopNotification(startingBlockName, startingBlockInterval)
+		}
 
-	for i, currBlock := range currDayBlocks[1 : len(currDayBlocks)-1] {
-		originalIndex := i + 1
-		itemTime, err := strconv.Atoi(currBlock.Time)
+		currBlockName, endTime, err := processBlockCurrent(currDayBlocks, currTime)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		updateWaybarFile(currBlockName, endTime)
 
 		if err != nil {
-			log.Fatalf("Could not convert schedule time %s to int. For item %s %s.", currBlock.Time, currBlock.Time, currBlock.Name)
-		}
-
-		if currTime == itemTime {
-			nextTime := currDayBlocks[originalIndex+1].Time
-			interval := fmt.Sprintf("%s-%s", currBlock.Time, nextTime)
-
-			if notifyOnMobile {
-				sendMobileNotification(currBlock.Name, interval)
-			} else {
-				sendDesktopNotification(currBlock.Name, interval)
-			}
-		}
-
-		if currTime < itemTime && !notifyOnMobile {
-			prevEvent := currDayBlocks[originalIndex-1].Name
-			currBlockText := currBlock.Time + " " + prevEvent
-			err := os.WriteFile("/home/tarik/.config/waybar/current_block", []byte(currBlockText), 644)
-
-			if err != nil {
-				log.Fatal(err.Error())
-			}
-
-			err = sendSignalToWaybar()
-			if err != nil {
-				log.Fatalf("Error sending signal to waybar: %v", err.Error())
-			}
-
-			break
+			log.Fatal(err)
 		}
 	}
 }
