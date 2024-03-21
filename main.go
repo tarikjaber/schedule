@@ -162,10 +162,8 @@ func sendSignalToWaybar() error {
 
 func processBlockStart(currDayBlocks []Block, currTime int) (blockName string, interval string, taskStarting bool) {
 	for i, block := range currDayBlocks {
-		originalIndex := i + 1
-
 		if currTime == block.Time {
-			nextTime := currDayBlocks[originalIndex+1].Time
+			nextTime := currDayBlocks[i+1].Time
 			interval := fmt.Sprintf("%04d-%04d", block.Time, nextTime)
 			return block.Name, interval, true
 		}
