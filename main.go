@@ -26,7 +26,7 @@ type DayBlocks struct {
 }
 
 func getDayBlocks() []DayBlocks {
-	file := os.Getenv("HOME") + "/schedule/bo"
+	file := os.Getenv("HOME") + "/schedule/bo2"
 
 	data, err := os.ReadFile(file)
 
@@ -161,6 +161,12 @@ func sendSignalToWaybar() error {
 }
 
 func processBlockStart(currDayBlocks []Block, currTime int) (blockName string, interval string, taskStarting bool) {
+	dummyEnd := Block{
+		Time: 2400,
+		Name: "Free",
+	}
+
+	currDayBlocks = append(currDayBlocks, dummyEnd)
 	for i, block := range currDayBlocks {
 		if currTime == block.Time {
 			nextTime := currDayBlocks[i+1].Time
@@ -226,7 +232,9 @@ func main() {
 		log.Fatalf("Current day %d not found in schedule.", currWeekday)
 	}
 
+	fmt.Println(currDayBlocks)
 	startingBlockName, startingBlockInterval, taskStarting := processBlockStart(currDayBlocks, currTime)
+	fmt.Println(currDayBlocks)
 
 	if mobile {
 		if taskStarting {
