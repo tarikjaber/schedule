@@ -27,7 +27,7 @@ type DayBlocks struct {
 }
 
 func getDayBlocks() []DayBlocks {
-	file := os.Getenv("HOME") + "/schedule/bo2"
+	file := os.Getenv("HOME") + "/schedule/bo"
 
 	data, err := os.ReadFile(file)
 
