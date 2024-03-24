@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -118,25 +119,6 @@ func sendDesktopNotification(blockName string, interval string) error {
 	return nil
 }
 
-func mobileNotifs() (bool, error) {
-	args := os.Args
-
-	if len(args) < 2 {
-		return false, fmt.Errorf("No CLI arguments provided")
-	}
-
-	command := args[1]
-
-	switch command {
-	case "desktop":
-		return false, nil
-	case "mobile":
-		return true, nil
-	default:
-		return false, fmt.Errorf("invalid command: %s; must be 'desktop' or 'mobile'", command)
-	}
-}
-
 func updateWaybarFile(currBlockName string, endTime string) error {
 	fileText := currBlockName + " " + endTime
 
@@ -202,11 +184,21 @@ func processBlockCurrent(currDayBlocks []Block, currTime int) (blockName string,
 	return "", "", fmt.Errorf("No matching event found for current time: %d", currTime)
 }
 
-func main() {
-	mobile, err := mobileNotifs()
-	if err != nil {
-		log.Fatal(err)
+func getCurrDayBlocks(currWeekday int) []Block {
+	schedules := getDayBlocks()
+
+	var currDayBlocks []Block
+	for _, schedule := range schedules {
+		if slices.Contains(schedule.Weekdays, currWeekday) {
+			currDayBlocks = schedule.Blocks
+		}
 	}
+	return currDayBlocks
+}
+
+func main() {
+	typePtr := flag.String("type", "cli", "What to do. 'mobile' to send mobile notif. 'desktop' to send desktop notif and update waybar. Nothing for cli tui.")
+	flag.Parse()
 
 	now := time.Now()
 
@@ -219,28 +211,19 @@ func main() {
 		log.Fatal(err)
 	}
 
-	schedules := getDayBlocks()
-
-	var currDayBlocks []Block
-	for _, schedule := range schedules {
-		if slices.Contains(schedule.Weekdays, currWeekday) {
-			currDayBlocks = schedule.Blocks
-		}
-	}
+	currDayBlocks := getCurrDayBlocks(currWeekday)
 
 	if currDayBlocks == nil {
 		log.Fatalf("Current day %d not found in schedule.", currWeekday)
 	}
 
-	fmt.Println(currDayBlocks)
 	startingBlockName, startingBlockInterval, taskStarting := processBlockStart(currDayBlocks, currTime)
-	fmt.Println(currDayBlocks)
 
-	if mobile {
+	if *typePtr == "mobile" {
 		if taskStarting {
 			sendMobileNotification(startingBlockName, startingBlockInterval)
 		}
-	} else {
+	} else if *typePtr == "desktop" {
 		if taskStarting {
 			sendDesktopNotification(startingBlockName, startingBlockInterval)
 		}
@@ -255,5 +238,9 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+	} else if *typePtr == "cli" {
+		runCli()
+	} else {
+		fmt.Printf("%s not 'mobile', 'desktop', or 'cli'.", *typePtr)
 	}
 }
