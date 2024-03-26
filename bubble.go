@@ -105,31 +105,121 @@ func tickCmd() tea.Cmd {
 	})
 }
 
+func divideAndRoundUp(number int, divisor int) int {
+	return (number + divisor - 1) / divisor
+}
+
+func timeToMinInDay(time int) int {
+	return time/100*60 + time%100
+}
+
+func secondsTo(toHour, toMinute int) int {
+	now := time.Now()
+	nowSecondsInDay := now.Hour()*60*60 + now.Minute()*60 + now.Second()
+	toSecondsInDay := toHour*60*60 + toMinute*60
+
+	return toSecondsInDay - nowSecondsInDay
+}
+
+func prettySecondsTo(toHour, toMinute int) string {
+	secondsToBlock := secondsTo(toHour, toMinute)
+
+	numHoursLeft := secondsToBlock / (60 * 60)
+	numMinutesLeft := secondsToBlock/60 - numHoursLeft*60
+	numSecondsLeft := secondsToBlock % 60
+
+	result := ""
+	if numHoursLeft > 0 {
+		result += fmt.Sprintf("%dh ", numHoursLeft)
+	}
+	if numMinutesLeft > 0 {
+		result += fmt.Sprintf("%dm ", numMinutesLeft)
+	}
+	result += fmt.Sprintf("%ds ", numSecondsLeft)
+
+	return result
+}
+
 func (m model) View() string {
 	s := ""
 	var currStyle = lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("#76ABAE")).
 		PaddingTop(1).
-		PaddingLeft(4).
+		PaddingLeft(3).
 		Width(22)
 	var regStyle = lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("#EEEEEE")).
 		PaddingTop(1).
-		PaddingLeft(4).
+		PaddingLeft(3).
 		Width(22)
+	var regBlockCharStyle = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#EEEEEE"))
+	var currBlockCharStyle = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#76ABAE"))
+	var secondsToStyle = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#EEEEEE")).
+		Background(lipgloss.Color("#31363F")).
+		PaddingTop(1).
+		PaddingBottom(1).
+		MarginLeft(3).
+		MarginBottom(1).
+		MarginTop(1).
+		Align(lipgloss.Center).
+		Width(50)
 
-	for i, dayBlock := range m.DayBlocks {
-		taskStr := strconv.Itoa(dayBlock.Time) + " " + dayBlock.Name
-		if i == m.CurrBlockIndex {
-			s += currStyle.Render(taskStr) + "\n"
-		} else {
-			s += regStyle.Render(taskStr) + "\n"
-		}
+	dummyEnd := Block{
+		Time: 2400,
+		Name: "Free",
 	}
 
-	return s
+	dayBlocks := append(m.DayBlocks, dummyEnd)
+
+	for i, dayBlock := range dayBlocks[:len(dayBlocks)-1] {
+		timePadded := fmt.Sprintf("%04d", dayBlock.Time)
+		taskStr := timePadded + " " + dayBlock.Name
+
+		if i == m.CurrBlockIndex {
+			s += currStyle.Render(taskStr)
+		} else {
+			s += regStyle.Render(taskStr)
+		}
+
+		minInDay := timeToMinInDay(dayBlock.Time)
+		nextMinInDay := timeToMinInDay(dayBlocks[i+1].Time)
+
+		minToNextBlock := nextMinInDay - minInDay
+		numBlocks := divideAndRoundUp(minToNextBlock, 15)
+
+		currTime, err := strconv.Atoi(time.Now().Format("1504"))
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		currBlockCharIndex := (timeToMinInDay(currTime) - timeToMinInDay(dayBlock.Time)) / 15
+
+		for j := 0; j < numBlocks; j++ {
+			if i == m.CurrBlockIndex && currBlockCharIndex == j {
+				s += currBlockCharStyle.Render("█")
+			} else {
+				s += regBlockCharStyle.Render("█")
+			}
+		}
+
+		s += "\n"
+	}
+
+	currBlockTime := dayBlocks[m.CurrBlockIndex+1].Time
+	nextBlockHour := currBlockTime / 100
+	nextBlockMinute := currBlockTime % 100
+	prettySecondsToString := secondsToStyle.Render(prettySecondsTo(nextBlockHour, nextBlockMinute))
+
+	return prettySecondsToString + s
 }
 
 func runCli() {
