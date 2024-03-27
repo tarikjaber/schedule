@@ -1,6 +1,6 @@
 module github.com/tarikjaber/schedule
 
-go 1.21.7
+go 1.22.1
 
 require (
 	github.com/charmbracelet/bubbletea v0.25.0
