@@ -8,13 +8,14 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type model struct {
 	Time           int
 	CurrBlockIndex int
 	DayBlocks      []Block
+	Width          int
+	Height         int
 }
 
 type tickMsg time.Time
@@ -89,8 +90,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		}
+	case tea.WindowSizeMsg:
+		m.Width, m.Height = msg.Width, msg.Height
 	case tickMsg:
-		return getCurrModel(), tickCmd()
+		return m, tickCmd()
 	}
 
 	// Return the updated model to the Bubble Tea runtime for processing.
@@ -121,72 +124,35 @@ func secondsTo(toHour, toMinute int) int {
 	return toSecondsInDay - nowSecondsInDay
 }
 
-func prettySecondsTo(toHour, toMinute int) string {
-	secondsToBlock := secondsTo(toHour, toMinute)
-
-	numHoursLeft := secondsToBlock / (60 * 60)
-	numMinutesLeft := secondsToBlock/60 - numHoursLeft*60
-	numSecondsLeft := secondsToBlock % 60
-
-	result := ""
-	if numHoursLeft > 0 {
-		result += fmt.Sprintf("%dh ", numHoursLeft)
-	}
-	if numMinutesLeft > 0 {
-		result += fmt.Sprintf("%dm ", numMinutesLeft)
-	}
-	result += fmt.Sprintf("%ds ", numSecondsLeft)
-
-	return result
+func calculateContentHeight(dayBlocks []Block) int {
+	return 3 + len(dayBlocks)*2
 }
 
-func (m model) View() string {
-	s := ""
-	var currStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#76ABAE")).
-		PaddingTop(1).
-		PaddingLeft(3).
-		Width(22)
-	var regStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#EEEEEE")).
-		PaddingTop(1).
-		PaddingLeft(3).
-		Width(22)
-	var regBlockCharStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#EEEEEE"))
-	var currBlockCharStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#76ABAE"))
-	var secondsToStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#EEEEEE")).
-		Background(lipgloss.Color("#31363F")).
-		PaddingTop(1).
-		PaddingBottom(1).
-		MarginLeft(3).
-		MarginBottom(1).
-		MarginTop(1).
-		Align(lipgloss.Center).
-		Width(50)
-
-	dummyEnd := Block{
-		Time: 2400,
-		Name: "Free",
+func calculateContentWidth(dayBlocks []Block) int {
+	maxNumChars := 0
+	for i, dayBlock := range dayBlocks[:len(dayBlocks)-1] {
+		minInDay := timeToMinInDay(dayBlock.Time)
+		nextMinInDay := timeToMinInDay(dayBlocks[i+1].Time)
+		minToNextBlock := nextMinInDay - minInDay
+		numBlocks := divideAndRoundUp(minToNextBlock, 15)
+		if numBlocks > maxNumChars {
+			maxNumChars = numBlocks
+		}
 	}
+	return 22 + maxNumChars
+}
 
-	dayBlocks := append(m.DayBlocks, dummyEnd)
+func (m model) renderBlocks(dayBlocks []Block, marginLeft int) string {
+	s := ""
 
 	for i, dayBlock := range dayBlocks[:len(dayBlocks)-1] {
 		timePadded := fmt.Sprintf("%04d", dayBlock.Time)
 		taskStr := timePadded + " " + dayBlock.Name
 
 		if i == m.CurrBlockIndex {
-			s += currStyle.Render(taskStr)
+			s += primaryStyle.MarginLeft(marginLeft).Render(taskStr)
 		} else {
-			s += regStyle.Render(taskStr)
+			s += regularStyle.MarginLeft(marginLeft).Render(taskStr)
 		}
 
 		minInDay := timeToMinInDay(dayBlock.Time)
@@ -214,9 +180,52 @@ func (m model) View() string {
 		s += "\n"
 	}
 
+	return s
+}
+
+func prettySecondsTo(toHour, toMinute int) string {
+	secondsToBlock := secondsTo(toHour, toMinute)
+
+	numHoursLeft := secondsToBlock / (60 * 60)
+	numMinutesLeft := secondsToBlock/60 - numHoursLeft*60
+	numSecondsLeft := secondsToBlock % 60
+
+	result := ""
+	if numHoursLeft > 0 {
+		result += fmt.Sprintf("%dh ", numHoursLeft)
+	}
+	if numMinutesLeft > 0 {
+		result += fmt.Sprintf("%dm ", numMinutesLeft)
+	}
+	result += fmt.Sprintf("%ds ", numSecondsLeft)
+
+	return result
+}
+
+func (m model) View() string {
+	dummyEnd := Block{
+		Time: 2400,
+		Name: "Free",
+	}
+
+	dayBlocks := append(m.DayBlocks, dummyEnd)
+
 	currBlockTime := dayBlocks[m.CurrBlockIndex+1].Time
+	contentWidth := calculateContentWidth(dayBlocks)
+	contentHeight := calculateContentHeight(dayBlocks)
+
+	marginTop := (m.Height - contentHeight) / 2
+	marginLeft := (m.Width - contentWidth) / 2
+
+	secondsToStyle = secondsToStyle.
+		MarginTop(marginTop).
+		MarginLeft(marginLeft).
+		Width(contentWidth)
+
 	nextBlockHour := currBlockTime / 100
 	nextBlockMinute := currBlockTime % 100
+
+	s := m.renderBlocks(dayBlocks, marginLeft)
 	prettySecondsToString := secondsToStyle.Render(prettySecondsTo(nextBlockHour, nextBlockMinute))
 
 	return prettySecondsToString + s
