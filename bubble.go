@@ -79,7 +79,6 @@ func (m model) Init() tea.Cmd {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
-	// Is it a key press?
 	case tea.KeyMsg:
 
 		// Cool, what was the actual key pressed?
@@ -88,16 +87,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// These keys should exit the program.
 		case "ctrl+c", "q":
 			return m, tea.Quit
-
 		}
-	case tea.WindowSizeMsg:
-		m.Width, m.Height = msg.Width, msg.Height
 	case tickMsg:
 		return m, tickCmd()
 	}
 
-	// Return the updated model to the Bubble Tea runtime for processing.
-	// Note that we're not returning a command.
 	return m, nil
 }
 
@@ -124,25 +118,7 @@ func secondsTo(toHour, toMinute int) int {
 	return toSecondsInDay - nowSecondsInDay
 }
 
-func calculateContentHeight(dayBlocks []Block) int {
-	return 3 + len(dayBlocks)*2
-}
-
-func calculateContentWidth(dayBlocks []Block) int {
-	maxNumChars := 0
-	for i, dayBlock := range dayBlocks[:len(dayBlocks)-1] {
-		minInDay := timeToMinInDay(dayBlock.Time)
-		nextMinInDay := timeToMinInDay(dayBlocks[i+1].Time)
-		minToNextBlock := nextMinInDay - minInDay
-		numBlocks := divideAndRoundUp(minToNextBlock, 15)
-		if numBlocks > maxNumChars {
-			maxNumChars = numBlocks
-		}
-	}
-	return 22 + maxNumChars
-}
-
-func (m model) renderBlocks(dayBlocks []Block, marginLeft int) string {
+func (m model) renderBlocks(dayBlocks []Block, timeToNext string) string {
 	s := ""
 
 	for i, dayBlock := range dayBlocks[:len(dayBlocks)-1] {
@@ -150,34 +126,11 @@ func (m model) renderBlocks(dayBlocks []Block, marginLeft int) string {
 		taskStr := timePadded + " " + dayBlock.Name
 
 		if i == m.CurrBlockIndex {
-			s += primaryStyle.MarginLeft(marginLeft).Render(taskStr)
+			s += currStyle.MarginLeft(2).Render(taskStr)
+			s += timeToNext
 		} else {
-			s += regularStyle.MarginLeft(marginLeft).Render(taskStr)
+			s += regularStyle.MarginLeft(2).Render(taskStr)
 		}
-
-		minInDay := timeToMinInDay(dayBlock.Time)
-		nextMinInDay := timeToMinInDay(dayBlocks[i+1].Time)
-
-		minToNextBlock := nextMinInDay - minInDay
-		numBlocks := divideAndRoundUp(minToNextBlock, 15)
-
-		currTime, err := strconv.Atoi(time.Now().Format("1504"))
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		currBlockCharIndex := (timeToMinInDay(currTime) - timeToMinInDay(dayBlock.Time)) / 15
-
-		for j := 0; j < numBlocks; j++ {
-			if i == m.CurrBlockIndex && currBlockCharIndex == j {
-				s += currBlockCharStyle.Render("█")
-			} else {
-				s += regBlockCharStyle.Render("█")
-			}
-		}
-
-		s += "\n"
 	}
 
 	return s
@@ -210,25 +163,14 @@ func (m model) View() string {
 
 	dayBlocks := append(m.DayBlocks, dummyEnd)
 
-	currBlockTime := dayBlocks[m.CurrBlockIndex+1].Time
-	contentWidth := calculateContentWidth(dayBlocks)
-	contentHeight := calculateContentHeight(dayBlocks)
+	nextBlockTime := dayBlocks[m.CurrBlockIndex+1].Time
+	nextBlockHour := nextBlockTime / 100
+	nextBlockMinute := nextBlockTime % 100
 
-	marginTop := (m.Height - contentHeight) / 2
-	marginLeft := (m.Width - contentWidth) / 2
+	prettySecondsToString := timeToNextStyle.Render(prettySecondsTo(nextBlockHour, nextBlockMinute))
+	s := m.renderBlocks(dayBlocks, prettySecondsToString)
 
-	secondsToStyle = secondsToStyle.
-		MarginTop(marginTop).
-		MarginLeft(marginLeft).
-		Width(contentWidth)
-
-	nextBlockHour := currBlockTime / 100
-	nextBlockMinute := currBlockTime % 100
-
-	s := m.renderBlocks(dayBlocks, marginLeft)
-	prettySecondsToString := secondsToStyle.Render(prettySecondsTo(nextBlockHour, nextBlockMinute))
-
-	return prettySecondsToString + s
+	return s
 }
 
 func runCli() {
