@@ -11,11 +11,9 @@ import (
 )
 
 type model struct {
-	Time           int
 	CurrBlockIndex int
 	DayBlocks      []Block
-	Width          int
-	Height         int
+	LastParsedDay  int
 }
 
 type tickMsg time.Time
@@ -62,9 +60,9 @@ func getCurrModel() model {
 	}
 
 	return model{
-		Time:           currTime,
 		CurrBlockIndex: currBlockIndex,
 		DayBlocks:      currDayBlocks,
+		LastParsedDay:  int(now.Weekday()),
 	}
 }
 
@@ -89,6 +87,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 	case tickMsg:
+		if int(time.Now().Weekday()) != m.LastParsedDay {
+			m = getCurrModel()
+		}
 		return m, tickCmd()
 	}
 
