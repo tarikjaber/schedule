@@ -97,8 +97,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func tickCmd() tea.Cmd {
-	// return tea.Tick(time.Minute*5, func(t time.Time) tea.Msg {
-	return tea.Tick(time.Second*1, func(t time.Time) tea.Msg {
+	return tea.Tick(time.Minute*1, func(t time.Time) tea.Msg {
 		return tickMsg(t)
 	})
 }
@@ -142,16 +141,12 @@ func prettySecondsTo(toHour, toMinute int) string {
 
 	numHoursLeft := secondsToBlock / (60 * 60)
 	numMinutesLeft := secondsToBlock/60 - numHoursLeft*60
-	numSecondsLeft := secondsToBlock % 60
 
 	result := ""
 	if numHoursLeft > 0 {
 		result += fmt.Sprintf("%dh ", numHoursLeft)
 	}
-	if numMinutesLeft > 0 {
-		result += fmt.Sprintf("%dm ", numMinutesLeft)
-	}
-	result += fmt.Sprintf("%ds ", numSecondsLeft)
+	result += fmt.Sprintf("%dm ", numMinutesLeft)
 
 	return result
 }
