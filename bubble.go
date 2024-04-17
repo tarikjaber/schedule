@@ -89,7 +89,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if dayIndex != m.LastParsedDay {
 			m = getCurrModel()
 		} else {
-			currTimeStr := time.Now().Format("0304")
+			currTimeStr := time.Now().Format("1504")
 			currTime, err := strconv.Atoi(currTimeStr)
 			if err != nil {
 				log.Fatalf("%s should be able to be converted to number. %v", currTimeStr, err)
