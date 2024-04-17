@@ -148,7 +148,10 @@ func prettySecondsTo(toHour, toMinute int) string {
 	secondsToBlock := secondsTo(toHour, toMinute)
 
 	numHoursLeft := secondsToBlock / (60 * 60)
-	numMinutesLeft := secondsToBlock/60 - numHoursLeft*60
+
+	// Round up num of minutes. For example if theres 30 seconds left
+	// it is better to show 1m left as opposed to 0m which can be confusing.
+	numMinutesLeft := secondsToBlock/60 - numHoursLeft*60 + 1
 
 	result := ""
 	if numHoursLeft > 0 {
