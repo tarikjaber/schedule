@@ -95,8 +95,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				log.Fatalf("%s should be able to be converted to number. %v", currTimeStr, err)
 			}
 
-			if currTime >= m.DayBlocks[m.CurrBlockIndex+1].Time {
-				m.CurrBlockIndex += 1
+			if m.CurrBlockIndex != len(m.DayBlocks) {
+				if currTime >= m.DayBlocks[m.CurrBlockIndex+1].Time {
+					m.CurrBlockIndex += 1
+				}
 			}
 		}
 
@@ -169,7 +171,7 @@ func (m model) View() string {
 	nextBlockHour := nextBlockTime / 100
 	nextBlockMinute := nextBlockTime % 100
 
-	prettySecondsToString := timeToNextStyle.Render(prettySecondsTo(nextBlockHour, nextBlockMinute))
+	prettySecondsToString := timeToNextBlockStyle.Render(prettySecondsTo(nextBlockHour, nextBlockMinute))
 	s := m.renderBlocks(dayBlocks, prettySecondsToString)
 
 	return s

@@ -23,7 +23,7 @@ var regularStyle = baseStyle.Copy().
 	Align(lipgloss.Left).
 	Width(22)
 
-var timeToNextStyle = baseStyle.Copy().
+var timeToNextBlockStyle = baseStyle.Copy().
 	Foreground(lipgloss.Color("#607274")).
 	MarginLeft(3).
 	Align(lipgloss.Center)
