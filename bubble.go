@@ -79,17 +79,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 
-		// Cool, what was the actual key pressed?
 		switch msg.String() {
 
-		// These keys should exit the program.
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		}
 	case tickMsg:
-		if int(time.Now().Weekday()) != m.LastParsedDay {
+		dayIndex := int(time.Now().Weekday())
+		if dayIndex != m.LastParsedDay {
 			m = getCurrModel()
+		} else {
+			currTimeStr := time.Now().Format("0304")
+			currTime, err := strconv.Atoi(currTimeStr)
+			if err != nil {
+				log.Fatalf("%s should be able to be converted to number. %v", currTimeStr, err)
+			}
+
+			if currTime >= m.DayBlocks[m.CurrBlockIndex+1].Time {
+				m.CurrBlockIndex += 1
+			}
 		}
+
 		return m, tickCmd()
 	}
 
@@ -104,10 +114,6 @@ func tickCmd() tea.Cmd {
 
 func divideAndRoundUp(number int, divisor int) int {
 	return (number + divisor - 1) / divisor
-}
-
-func timeToMinInDay(time int) int {
-	return time/100*60 + time%100
 }
 
 func secondsTo(toHour, toMinute int) int {
