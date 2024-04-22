@@ -95,7 +95,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				log.Fatalf("%s should be able to be converted to number. %v", currTimeStr, err)
 			}
 
-			if m.CurrBlockIndex != len(m.DayBlocks) {
+			if m.CurrBlockIndex != len(m.DayBlocks)-1 {
 				if currTime >= m.DayBlocks[m.CurrBlockIndex+1].Time {
 					m.CurrBlockIndex += 1
 				}
