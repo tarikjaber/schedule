@@ -122,7 +122,7 @@ func sendDesktopNotification(blockName string, interval string) error {
 func updateWaybarFile(currBlockName string, endTime string) error {
 	fileText := currBlockName + " " + endTime
 
-	err := os.WriteFile("/home/tarik/.config/waybar/current_block", []byte(fileText), 644)
+	err := os.WriteFile("/home/tarik/schedule/current_block", []byte(fileText), 644)
 
 	if err != nil {
 		log.Fatal(err.Error())
